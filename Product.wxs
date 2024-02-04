@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:netfx="http://schemas.microsoft.com/wix/NetFxExtension">
+	<?include .\PdfScribePreprocessorVariables.wxi ?>
+
+	<Product Id="*" Name="$(var.ProductName)" Language="1033" Version="$(var.ProductVersion)" Manufacturer="Trucell" UpgradeCode="409ff0d1-1c3a-4f8d-8a5a-350705977809">
+		<Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="x64" InstallPrivileges="elevated" Description="eOrdering Virtual Printer" Comments="eOrdering Virtual Printer $(var.ProductVersion) installation package" Id="*" />
+		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." Schedule="afterInstallValidate" AllowDowngrades="no" AllowSameVersionUpgrades="yes"/>
+		<MediaTemplate EmbedCab="yes"/>
+		<Icon Id="AdobeIcon.ico" SourceFile="..\Common\AdobeIcon.ico" />
+		<Feature Id="ProductFeature" Title="eOrdering" Level="1">
+			<ComponentGroupRef Id="ProductComponents"  />
+			<ComponentRef Id="ApplicationShortcut"/>
+		</Feature>
+		<Feature Id="ProductFeature2" Title="ReferralSelection" Level="1">
+			<ComponentGroupRef Id="ProductComponents2" />
+		</Feature>
+		<Feature Id="ProductFeature3" Title="eOrdering Updater" Level="1">
+			<ComponentGroupRef Id="eOrderingUpdaterComponents" />
+		</Feature>
+		<!-- .NET 4.8 prerequisite -->
+		<PropertyRef Id="WIXNETFX4RELEASEINSTALLED" />
+		<Condition Message='[ProductName] requires .NET Framework 4.8 (or later).'>
+			<![CDATA[Installed or (WIXNETFX4RELEASEINSTALLED >= "#528040")]]>
+		</Condition>
+		<Condition Message="64-bit Windows is required.">
+			<![CDATA[Installed OR VersionNT64]]>
+		</Condition>
+
+		<Property Id="ARPPRODUCTICON" Value="AdobeIcon.ico" />
+		<Property Id="MSIUSEREALADMINDETECTION" Value="1" />
+		<Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch eOrdering" />
+		<Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1"/>
+
+		<PropertyRef Id="MSIFASTINSTALL" />
+		<Property Id="MSIFASTINSTALL" Value="1"/>
+
+		<!-- Custom Actions -->
+
+		<UI>
+			<ProgressText Action="InstallPrinter">
+				Installing printer
+			</ProgressText>
+			<!--<ProgressText Action="InstallVisualCpp">
+				Installing Visual C++ 2015-2022 Redistributable (x64)
+			</ProgressText>-->
+			<ProgressText Action="UpdatingRegistry">
+				Updating Registry
+			</ProgressText>
+			<ProgressText Action="CreateSqliteDb">
+				Installing Database
+			</ProgressText>
+			<ProgressText Action="UninstallPrinter">
+				Removing Printer
+			</ProgressText>
+
+			<Publish Dialog="ExitDialog"
+				 Control="Finish"
+				 Event="DoAction"
+				 Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed
+			</Publish>
+		</UI>
+
+		<Property Id="WixShellExecTarget" Value="[#PdfScribeExe]" />
+		<CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
+
+		<Binary Id="PdfScribeInstallCustomAction.CA.dll" SourceFile="$(var.PdfScribeInstallCustomAction.TargetDir)$(var.PdfScribeInstallCustomAction.TargetName).CA.dll" />
+		<CustomAction Id="SetCustomActionDataValues" Return="check" Property="InstallPrinter" Value="DriverSourceDirectory=[INSTALLFOLDER];OutputCommand=[INSTALLFOLDER]eOrdering.exe;OutputCommandArguments=" />
+		<CustomAction Id="SetCustomActionDataValuess" Return="check" Property="OpenProgram" Value="DriverSourceDirectory=[INSTALLFOLDER];OutputCommand=[INSTALLFOLDER]eOrdering.exe;OutputCommandArguments=" />
+		<CustomAction Id="InstallPrinter" Return="check" Execute="deferred" BinaryKey="PdfScribeInstallCustomAction.CA.dll" DllEntry="InstallPdfScribePrinter" Impersonate="no" />
+		<!--<CustomAction Id="InstallVisualCpp" Return="check" Execute="deferred" BinaryKey="PdfScribeInstallCustomAction.CA.dll" DllEntry="InstallVisualCpp" Impersonate="no" />-->
+		<CustomAction Id="UpdatingRegistry" Return="check" Execute="deferred" BinaryKey="PdfScribeInstallCustomAction.CA.dll" DllEntry="UpdatingRegistry" Impersonate="no" />
+		<!--<CustomAction Id="OpenProgram" Return="ignore" Execute="immediate" BinaryKey="PdfScribeInstallCustomAction.CA.dll" DllEntry="OpenProgram" Impersonate="no" />-->
+		<CustomAction Id="UninstallPrinter" Return="ignore" Execute="deferred" BinaryKey="PdfScribeInstallCustomAction.CA.dll" DllEntry="UninstallPdfScribePrinter" Impersonate="no" />
+		<CustomAction Id="CleanUp" Return="ignore" Execute="deferred" BinaryKey="PdfScribeInstallCustomAction.CA.dll" DllEntry="CleanUp" Impersonate="no" />
+		<CustomAction Id="CreateSqliteDb" Return="ignore" Execute="deferred" BinaryKey="PdfScribeInstallCustomAction.CA.dll" DllEntry="CreateSqliteDb" Impersonate="no" />
+		<InstallExecuteSequence>
+			<Custom Action="SetCustomActionDataValues" After="InstallFiles" >NOT Installed</Custom>
+			<Custom Action="SetCustomActionDataValuess" After="InstallFiles" >NOT Installed</Custom>
+			<Custom Action="InstallPrinter" After="SetCustomActionDataValues"  >NOT Installed</Custom>
+			<Custom Action="CreateSqliteDb" After="SetCustomActionDataValues"  >NOT Installed</Custom>
+			<!--<Custom Action="InstallVisualCpp" After="SetCustomActionDataValues"  >NOT Installed</Custom>-->
+			<Custom Action="UpdatingRegistry" After="SetCustomActionDataValues"  >NOT Installed</Custom>
+			<Custom Action="UninstallPrinter" Before="RemoveFiles" >(Installed) OR (UPGRADINGPRODUCTCODE) OR (REMOVE)</Custom>
+			<Custom Action="CleanUp" Before="RemoveFiles" >Installed AND (REMOVE="ALL") AND NOT UPGRADEFOUND AND NOT UPGRADINGPRODUCTCODE</Custom>
+		</InstallExecuteSequence>
+		<!--<Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />-->
+		<WixVariable Id="WixUILicenseRtf" Value="..\Common\agpl-3.0.rtf" />
+		<!--<UIRef Id="WixUI_InstallDir" />-->
+		<UIRef Id="WixUI_Minimal" />
+
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="ProgramFiles64Folder">
+				<Directory Id="INSTALLFOLDER" Name="eOrdering">
+					<Directory Id="INSTALLFOLDER2" Name="ReferralSelection" />
+				</Directory>
+				<Directory Id="INSTALLFOLDER3" Name="eOrdering Updater" />
+			</Directory>
+			<Directory Id="ProgramMenuFolder">
+			</Directory>
+		</Directory>
+		<DirectoryRef Id="ProgramMenuFolder">
+			<Component Id="ApplicationShortcut">
+				<Shortcut Id="ApplicationStartMenuShortcut"
+						  Name="eOrdering"
+						  Target="[#PdfScribeExe]"
+						  WorkingDirectory="INSTALLFOLDER"/>
+				<!--<RemoveFolder Id="CleanUpShortCut" Directory="eOrderingApplicationFolder" On="uninstall"/>-->
+				<RegistryValue Root="HKCU" Key="Software\eOrdering" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+			</Component>
+		</DirectoryRef>
+	</Product>
+
+	<Fragment>
+		<ComponentGroup Id="eOrderingUpdaterComponents" Directory="INSTALLFOLDER3">
+			<Component Id="eOrderingUpdaterService" Guid="*">
+				<File Id="eOrderingUpdater" Source="..\eOrderingUpdater\bin\Debug\eOrderingUpdater.exe" KeyPath="yes" />
+				<ServiceInstall
+					Id="eOrderingUpdater"
+					Name="eOrdering Updater"
+					Type="ownProcess"
+					Start="auto"
+					ErrorControl="normal"
+					Description="eOrdering Updater"
+					Account="LocalSystem"
+				/>
+				<ServiceControl Id="ServiceControl" Name="eOrdering Updater" Start="install" Stop="uninstall" Remove="uninstall" />
+			</Component>
+			<Component Id="Component1" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\eOrderingUpdater.pdb" KeyPath="yes" />
+			</Component>
+			<Component Id="Component2" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\Referral.Shared.pdb" KeyPath="yes" />
+			</Component>
+			<Component Id="Component3" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\eOrderingUpdater.exe.config" KeyPath="yes" />
+			</Component>
+			<Component Id="Component4" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\Newtonsoft.Json.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="Component5" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\Referral.Shared.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="Component6" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\System.Configuration.ConfigurationManager.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="Component7" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\System.Security.AccessControl.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="Component8" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\System.Security.Permissions.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="Component9" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\System.Security.Principal.Windows.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="Component10" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\Newtonsoft.Json.xml" KeyPath="yes" />
+			</Component>
+			<Component Id="Component11" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\System.Configuration.ConfigurationManager.xml" KeyPath="yes" />
+			</Component>
+			<Component Id="Component12" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\System.Security.AccessControl.xml" KeyPath="yes" />
+			</Component>
+			<Component Id="Component13" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\System.Security.Permissions.xml" KeyPath="yes" />
+			</Component>
+			<Component Id="Component14" Guid="*">
+				<File Source="..\eOrderingUpdater\bin\Debug\System.Security.Principal.Windows.xml" KeyPath="yes" />
+			</Component>
+		</ComponentGroup>
+	</Fragment>
+
+	<Fragment>
+		<ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+			<Component Id="PdfScribeBase" Guid="*">
+				<File Id="PdfScribeExe" Source="$(var.eOrdering.TargetPath)" KeyPath="yes" >
+					<netfx:NativeImage Id="$(var.eOrdering.TargetFileName)" Platform="64bit" Priority="1"   />
+				</File>
+			</Component>
+			<Component Id="PdfScribeExeConfig" Guid="*">
+				<File Source="$(var.eOrdering.TargetDir)$(var.eOrdering.TargetFileName).config" KeyPath="yes" />
+			</Component>
+			<!--<Component Id="gsdll64dll" Guid="*">
+				<File Source="..\Lib\gsdll64.dll" KeyPath="yes" />
+			</Component>-->
+			<Component Id="redmon64pdfscribedll" Guid="*">
+				<File Source="..\Lib\redmon64pdfscribe.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="PS5UIDLL" Guid="*">
+				<File Source="..\Lib\PS5UI.DLL" KeyPath="yes" />
+			</Component>
+			<Component Id="PSCRIPTHLP" Guid="*">
+				<File Source="..\Lib\PSCRIPT.HLP" KeyPath="yes" />
+			</Component>
+			<Component Id="PSCRIPTNTF" Guid="*">
+				<File Source="..\Lib\PSCRIPT.NTF" KeyPath="yes" />
+			</Component>
+			<Component Id="PSCRIPT5DLL" Guid="*">
+				<File Source="..\Lib\PSCRIPT5.DLL" KeyPath="yes" />
+			</Component>
+			<Component Id="SCPDFPRNppd" Guid="*">
+				<File Source="..\Lib\SCPDFPRN.ppd" KeyPath="yes" />
+			</Component>
+			<Component Id="System.Text.Json" Guid="*">
+				<File Source="..\packages\System.Text.Json.7.0.3\lib\net462\System.Text.Json.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="Microsoft.Bcl.AsyncInterfaces" Guid="*">
+				<File Source="..\packages\Microsoft.Bcl.AsyncInterfaces.7.0.0\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="System.Memory" Guid="*">
+				<File Source="..\packages\System.Memory.4.5.5\lib\net461\System.Memory.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="System.Text.Encodings.Web" Guid="*">
+				<File Source="..\packages\System.Text.Encodings.Web.7.0.0\lib\net462\System.Text.Encodings.Web.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="System.Runtime.CompilerServices.Unsafe" Guid="*">
+				<File Source="..\packages\System.Runtime.CompilerServices.Unsafe.6.0.0\lib\net461\System.Runtime.CompilerServices.Unsafe.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="System.Buffers" Guid="*">
+				<File Source="..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="System.Numerics.Vectors." Guid="*">
+				<File Source="..\packages\System.Numerics.Vectors.4.5.0\lib\net46\System.Numerics.Vectors.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="System.Threading.Tasks.Extensions" Guid="*">
+				<File Source="..\packages\System.Threading.Tasks.Extensions.4.5.4\lib\net461\System.Threading.Tasks.Extensions.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="System.ValueTuple" Guid="*">
+				<File Source="..\packages\System.ValueTuple.4.5.0\lib\net47\System.ValueTuple.dll" KeyPath="yes" />
+			</Component>
+		</ComponentGroup>
+	</Fragment>
+
+	<Fragment>
+		<ComponentGroup Id="ProductComponents2" Directory="INSTALLFOLDER2">
+			<Component Id="pdfium_dll" Guid="*">
+				<File Id="pdfium_dll" Source="..\ReferralSelection\bin\Debug\x64\pdfium.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="pdfiumviewer_dll" Guid="*">
+				<File Id="pdfiumviewer_dll" Source="..\packages\PdfiumViewer.2.13.0.0\lib\net20\PdfiumViewer.dll" KeyPath="yes" />
+			</Component>
+			<!--<Component Id="ghostscript_net_dll" Guid="*">
+				<File Id="ghostscript_net_dll" Source="..\packages\Ghostscript.NET.1.2.3.1\lib\net40\Ghostscript.NET.dll" KeyPath="yes" />
+			</Component>-->
+			<Component Id="newtonsoft_json_dll" Guid="*">
+				<File Id="newtonsoft_json_dll" Source="..\ReferralSelection\bin\Debug\Newtonsoft.Json.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="newtonsoft_json_xml" Guid="*">
+				<File Id="newtonsoft_json_xml" Source="..\ReferralSelection\bin\Debug\Newtonsoft.Json.xml" KeyPath="yes" />
+			</Component>
+			<Component Id="referral_shared_dll" Guid="*">
+				<File Id="referral_shared_dll" Source="..\ReferralSelection\bin\Debug\Referral.Shared.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="referral_shared_pdb" Guid="*">
+				<File Id="referral_shared_pdb" Source="..\ReferralSelection\bin\Debug\Referral.Shared.pdb" KeyPath="yes" />
+			</Component>
+			<Component Id="referralselection_application" Guid="*">
+				<File Id="referralselection_application" Source="..\ReferralSelection\bin\Debug\ReferralSelection.application" KeyPath="yes" />
+			</Component>
+			<Component Id="referralselection_exe" Guid="*">
+				<File Id="referralselection_exe" Source="..\ReferralSelection\bin\Debug\ReferralSelection.exe" KeyPath="yes" />
+			</Component>
+			<Component Id="referralselection_exe_config" Guid="*">
+				<File Id="referralselection_exe_config" Source="..\ReferralSelection\bin\Debug\ReferralSelection.exe.config" KeyPath="yes" />
+			</Component>
+			<Component Id="referralselection_exe_manifest" Guid="*">
+				<File Id="referralselection_exe_manifest" Source="..\ReferralSelection\bin\Debug\ReferralSelection.exe.manifest" KeyPath="yes" />
+			</Component>
+			<Component Id="referralselection_pdb" Guid="*">
+				<File Id="referralselection_pdb" Source="..\ReferralSelection\bin\Debug\ReferralSelection.pdb" KeyPath="yes" />
+			</Component>
+			<Component Id="ghostscript" Guid="*">
+				<File Id="ghostscript" Source="..\Lib\gsdll64.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="TrucellLogo" Guid="*">
+				<File Id="TrucellLogo" Source="..\ReferralSelection\trucell-footer-logo.png" KeyPath="yes" />
+			</Component>
+			<Component Id="FaxApi.dll" Guid="*">
+				<File Source="..\ReferralSelection\bin\Debug\FaxApi.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="IO.ClickSend.dll" Guid="*">
+				<File Source="..\packages\ClickSendV3API.5.0.72\lib\net452\IO.ClickSend.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="JsonSubTypes.dll" Guid="*">
+				<File Source="..\packages\JsonSubTypes.1.2.0\lib\net47\JsonSubTypes.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="SQLite.Interop.dll" Guid="*">
+				<File Source="..\ReferralSelection\bin\Debug\x64\SQLite.Interop.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="ReferralContextModels.dll" Guid="*">
+				<File Source="..\ReferralSelection\bin\Debug\ReferralContextModels.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="CredentialManagement.dll" Guid="*">
+				<File Source="..\ReferralSelection\bin\Debug\CredentialManagement.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="EntityFramework.dll" Guid="*">
+				<File Source="..\ReferralSelection\bin\Debug\EntityFramework.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="Settings.db" Guid="*">
+				<File Source="..\ReferralSelection\bin\Debug\Settings.db" KeyPath="yes" />
+			</Component>
+			<Component Id="System.Data.SQLite.dll" Guid="*">
+				<File Source="..\ReferralSelection\bin\Debug\System.Data.SQLite.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="System.Data.SQLite.EF6.dll" Guid="*">
+				<File Source="..\ReferralSelection\bin\Debug\System.Data.SQLite.EF6.dll" KeyPath="yes" />
+			</Component>
+			<Component Id="System.Data.SQLite.Linq.dll" Guid="*">
+				<File Source="..\ReferralSelection\bin\Debug\System.Data.SQLite.Linq.dll" KeyPath="yes" />
+			</Component>
+		</ComponentGroup>
+	</Fragment>
+</Wix>
